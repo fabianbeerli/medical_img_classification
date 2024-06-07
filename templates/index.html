@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classification</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        body, html {
+            height: 100%;
+        }
+        .center-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+        }
+        #uploadedImage {
+            max-width: 100%;
+            height: auto;
+            display: none;
+            margin-top: 20px;
+            width: 300px; /* Set a fixed width */
+        }
+        #result {
+            margin-top: 20px;
+        }
+        .action-buttons {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .action-button {
+            margin-left: 10px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container center-content">
+        <div>
+            <h1 class="mt-5">Upload an Image for Classification</h1>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-group d-flex justify-content-center">
+                    <label for="fileInput" class="btn btn-primary mr-2">Choose an image</label>
+                    <input type="file" name="file" id="fileInput" class="form-control-file" style="display:none;">
+                </div>
+                <button type="submit" class="btn btn-success">Upload</button>
+            </form>
+            <img id="uploadedImage" src="#" alt="Uploaded Image" class="img-fluid">
+            <div id="result" class="alert alert-info" role="alert"></div>
+
+            <!-- Table to display top 5 predicted classes -->
+            <div id="predictionTable" style="display:none;">
+                <h2 class="mt-5">Prediction</h2>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Class</th>
+                            <th>Probability (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictionBody">
+                        <!-- Prediction rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button id="actionButton" class="btn btn-danger action-button">Load New Data</button>
+        <button id="retrainButton" class="btn btn-warning action-button">Retrain Model</button>
+    </div>
+
+    <!-- Modal for confirmation -->
+    <div class="modal" id="confirmationModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Retraining</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to retrain the model? This action will overwrite the existing trained model.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmRetrain">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    $(document).ready(function(){
+        $('#fileInput').change(function() {
+            var fileName = $(this).val().split('\\').pop();
+            $('#fileInput').siblings('label').html(fileName);
+        });
+
+        $('#uploadForm').on('submit', function(event){
+            event.preventDefault();
+            var formData = new FormData(this);
+            var fileInput = $('#fileInput')[0];
+            if (fileInput.files && fileInput.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#uploadedImage').attr('src', e.target.result);
+                    $('#uploadedImage').show();
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+            $.ajax({
+                url: '/predict',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response){
+                    $('#result').hide();
+                    $('#predictionTable').show();
+
+                    var topClasses = response.top_classes;
+                    var topProbabilities = response.probabilities;
+
+                    // Clear previous predictions
+                    $('#predictionBody').empty();
+
+                    // Populate the table with the top 5 predictions
+                    for (var i = 0; i < topClasses.length; i++) {
+                        var rank = i + 1;
+                        var className = topClasses[i];
+                        var probability = topProbabilities[i];
+                        var row = '<tr><td>' + rank + '</td><td>' + className + '</td><td>' + probability.toFixed(2) + '</td></tr>';
+                        $('#predictionBody').append(row);
+                    }
+                },
+                error: function(response){
+                    $('#result').html('Error: ' + response.responseJSON.error).show();
+                }
+            });
+        });
+
+        $('#retrainButton').on('click', function(){
+            $('#confirmationModal').modal('show');
+        });
+
+        $('#confirmRetrain').on('click', function(){
+            // Close the modal
+            $('#confirmationModal').modal('hide');
+            
+            // Call the retrain function
+            retrainModel();
+        });
+
+        function retrainModel() {
+            $('#retrainButton').prop('disabled', true); 
+            // Perform the retraining process
+            // This function should send a request to the server to initiate the retraining process
+            $.ajax({
+                url: '/retrain_model',
+                type: 'POST',
+                success: function(response){
+                    alert(response.message);
+                    $('#retrainButton').prop('disabled', false);
+                },
+                error: function(response){
+                    alert(response.responseJSON.error);
+                    $('#retrainButton').prop('disabled', false);
+                }
+            });
+        }
+
+        $('#actionButton').on('click', function(){
+            var numPictures = prompt("Enter the number of pictures to fetch:");
+            if (numPictures != null && numPictures != "") {
+                $('#actionButton').prop('disabled', true); // Disable button during data loading
+                $.ajax({
+                    url: '/clear_and_load_data',
+                    type: 'POST',
+                    data: { numPictures: numPictures },
+                    success: function(response){
+                        // Display a message indicating that the data loading process is complete
+                        alert(response.message);
+                        $('#actionButton').prop('disabled', false); // Re-enable button after data loading
+                    },
+                    error: function(response){
+                        alert(response.responseJSON.error);
+                        $('#actionButton').prop('disabled', false); // Re-enable button after data loading failure
+                    }
+                });
+            }
+        });
+
+    });
+</script>
+
+</body>
+</html>

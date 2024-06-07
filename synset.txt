@@ -1,0 +1,3 @@
+melanoma_indeterminate_malignant
+nevus_benign
+unknown_benign
