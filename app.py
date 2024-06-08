@@ -49,7 +49,7 @@ def predict():
             model_name = "custom_model.keras"
         elif model_type == 'resnet50':
             model_name = "resnet50_model.keras"
-        elif model_type == 'vvg16':
+        elif model_type == 'vgg16':
             model_name = "mobilenetv2_model.keras"
         else:
             model_name = "custom_model.keras"
@@ -110,7 +110,7 @@ def retrain_model():
             model.save('custom_model.keras')
         elif model_type == 'resnet50':
             model.save('resnet50_model.keras')
-        elif model_type == 'vvg16':
+        elif model_type == 'vgg16':
             model.save('mobilenetv2_model.keras')
         else:
             model.save('custom_model.keras')
