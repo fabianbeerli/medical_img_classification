@@ -12,7 +12,7 @@ Upon training and evaluating three distinct models for skin cancer classificatio
 
 - **Custom Model:** Initially trained with limited data, the custom model achieved an accuracy of approximately 65%. However, when trained with a larger dataset, its performance significantly improved, reaching an impressive accuracy of over 97%. This underscores the importance of data quantity in model performance, as observed in the significant improvement from the initial 65% to over 97% accuracy.
 
-- **ResNet50 and VGG16:** In comparison, both pre-trained models – ResNet50 and VGG16 – exhibited lower accuracy, approximately 47%. Despite their more complex architectures, the performance of these models did not match the custom model, indicating that pre-trained models may not always generalize well to specific datasets with distinct characteristics.
+- **ResNet50 and VGG16:** In comparison, both pre-trained models – ResNet50 and VGG16 – exhibited lower accuracy, approximately 47%. Due to time constraints, these models were not trained with a larger dataset to assess their full potential. It's important to note that the performance of ResNet50 and VGG16 could potentially improve with more extensive training data.
 
 ### Impact of Specific Choices:
 
