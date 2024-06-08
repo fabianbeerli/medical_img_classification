@@ -1,3 +1,6 @@
+atypical_melanocytic_proliferation_indeterminate_benign
 melanoma_indeterminate_malignant
+melanoma_malignant
 nevus_benign
+scar_indeterminate_malignant
 unknown_benign

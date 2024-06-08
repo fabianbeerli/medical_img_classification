@@ -50,6 +50,13 @@
                     <label for="fileInput" class="btn btn-primary mr-2">Choose an image</label>
                     <input type="file" name="file" id="fileInput" class="form-control-file" style="display:none;">
                 </div>
+                <div class="form-group d-flex justify-content-center">
+                    <select id="modelSelection" class="form-control">
+                        <option value="custom">Custom Model</option>
+                        <option value="resnet50">ResNet50 Model</option>
+                        <option value="vgg16">VGG16 Model</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-success">Upload</button>
             </form>
             <img id="uploadedImage" src="#" alt="Uploaded Image" class="img-fluid">
@@ -76,7 +83,9 @@
 
     <div class="action-buttons">
         <button id="actionButton" class="btn btn-danger action-button">Load New Data</button>
-        <button id="retrainButton" class="btn btn-warning action-button">Retrain Model</button>
+        <button id="retrainButton" class="btn btn-warning action-button" data-model="custom">Retrain Custom Model</button>
+        <button id="retrainResNetButton" class="btn btn-warning action-button" data-model="resnet50">Retrain ResNet50 Model</button>
+        <button id="retrainVGGButton" class="btn btn-warning action-button" data-model="vgg16">Retrain VGG16 Model</button>
     </div>
 
     <!-- Modal for confirmation -->
@@ -98,110 +107,142 @@
         </div>
     </div>
 
-
     <script>
-    $(document).ready(function(){
-        $('#fileInput').change(function() {
-            var fileName = $(this).val().split('\\').pop();
-            $('#fileInput').siblings('label').html(fileName);
-        });
-
-        $('#uploadForm').on('submit', function(event){
-            event.preventDefault();
-            var formData = new FormData(this);
-            var fileInput = $('#fileInput')[0];
-            if (fileInput.files && fileInput.files[0]) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    $('#uploadedImage').attr('src', e.target.result);
-                    $('#uploadedImage').show();
-                }
-                reader.readAsDataURL(fileInput.files[0]);
-            }
-            $.ajax({
-                url: '/predict',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function(response){
-                    $('#result').hide();
-                    $('#predictionTable').show();
-
-                    var topClasses = response.top_classes;
-                    var topProbabilities = response.probabilities;
-
-                    // Clear previous predictions
-                    $('#predictionBody').empty();
-
-                    // Populate the table with the top 5 predictions
-                    for (var i = 0; i < topClasses.length; i++) {
-                        var rank = i + 1;
-                        var className = topClasses[i];
-                        var probability = topProbabilities[i];
-                        var row = '<tr><td>' + rank + '</td><td>' + className + '</td><td>' + probability.toFixed(2) + '</td></tr>';
-                        $('#predictionBody').append(row);
-                    }
-                },
-                error: function(response){
-                    $('#result').html('Error: ' + response.responseJSON.error).show();
-                }
+        $(document).ready(function(){
+            let selectedModelType;
+            let selectedModelTypePredict;
+    
+            $('#fileInput').change(function() {
+                var fileName = $(this).val().split('\\').pop();
+                $('#fileInput').siblings('label').html(fileName);
             });
-        });
-
-        $('#retrainButton').on('click', function(){
-            $('#confirmationModal').modal('show');
-        });
-
-        $('#confirmRetrain').on('click', function(){
-            // Close the modal
-            $('#confirmationModal').modal('hide');
             
-            // Call the retrain function
-            retrainModel();
-        });
-
-        function retrainModel() {
-            $('#retrainButton').prop('disabled', true); 
-            // Perform the retraining process
-            // This function should send a request to the server to initiate the retraining process
-            $.ajax({
-                url: '/retrain_model',
-                type: 'POST',
-                success: function(response){
-                    alert(response.message);
-                    $('#retrainButton').prop('disabled', false);
-                },
-                error: function(response){
-                    alert(response.responseJSON.error);
-                    $('#retrainButton').prop('disabled', false);
+            // Function to handle form submission
+            $('#uploadForm').on('submit', function(event){
+                event.preventDefault();
+                var formData = new FormData(this);
+                var fileInput = $('#fileInput')[0];
+    
+                if (fileInput.files && fileInput.files[0]) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#uploadedImage').attr('src', e.target.result);
+                        $('#uploadedImage').show();
+                    }
+                    reader.readAsDataURL(fileInput.files[0]);
                 }
-            });
-        }
+    
+                formData.append('selectedModelTypePredict', selectedModelTypePredict); // Append the selected model type to the form data
 
-        $('#actionButton').on('click', function(){
-            var numPictures = prompt("Enter the number of pictures to fetch:");
-            if (numPictures != null && numPictures != "") {
-                $('#actionButton').prop('disabled', true); // Disable button during data loading
                 $.ajax({
-                    url: '/clear_and_load_data',
+                    url: '/predict',
                     type: 'POST',
-                    data: { numPictures: numPictures },
+                    data: formData,
+                    contentType: false,
+                    processData: false,
                     success: function(response){
-                        // Display a message indicating that the data loading process is complete
+                        $('#result').hide();
+                        $('#predictionTable').show();
+    
+                        var topClasses = response.top_classes;
+                        var topProbabilities = response.probabilities;
+    
+                        // Clear previous predictions
+                        $('#predictionBody').empty();
+    
+                        // Populate the table with the top 5 predictions
+                        for (var i = 0; i < topClasses.length; i++) {
+                            var rank = i + 1;
+                            var className = topClasses[i];
+                            var probability = topProbabilities[i];
+                            var row = '<tr><td>' + rank + '</td><td>' + className + '</td><td>' + probability.toFixed(2) + '</td></tr>';
+                            $('#predictionBody').append(row);
+                        }
+                    },
+                    error: function(response){
+                        $('#result').html('Error: ' + response.responseJSON.error).show();
+                    }
+                });
+            });
+    
+            // Function to handle model selection change
+            $('#modelSelection').change(function() {
+                selectedModelTypePredict = $(this).val();
+                console.log(selectedModelTypePredict); // Add this line for debugging
+            });
+    
+            $('.action-button').on('click', function(){
+                selectedModelType = $(this).data('model');
+                $('#confirmationModal').modal('show');
+            });
+
+            // Function to handle retraining model confirmation
+            $('#confirmRetrain').on('click', function(){
+                // Close the modal
+                $('#confirmationModal').modal('hide');
+                
+                // Call the retrain function
+                retrainModel();
+            });
+    
+            function retrainModel() {
+                $('#retrainButton').prop('disabled', true); 
+                $('#retrainResNetButton').prop('disabled', true); 
+                $('#retrainVGGButton').prop('disabled', true); 
+                
+                // Perform the retraining process
+                // This function should send a request to the server to initiate the retraining process
+                $.ajax({
+                    url: '/retrain_model',
+                    type: 'POST',
+                    data: JSON.stringify({ model_type: selectedModelType }),
+                    contentType: 'application/json',
+                    success: function(response){
                         alert(response.message);
-                        $('#actionButton').prop('disabled', false); // Re-enable button after data loading
+                        $('#retrainButton').prop('disabled', false);
+                        $('#retrainResNetButton').prop('disabled', false);
+                        $('#retrainVGGButton').prop('disabled', false);
                     },
                     error: function(response){
                         alert(response.responseJSON.error);
-                        $('#actionButton').prop('disabled', false); // Re-enable button after data loading failure
+                        $('#retrainButton').prop('disabled', false);
+                        $('#retrainResNetButton').prop('disabled', false);
+                        $('#retrainVGGButton').prop('disabled', false);
                     }
                 });
             }
-        });
+    
+            // Function to handle action button click
+            $('#actionButton').on('click', function(){
+                var numPictures = prompt("Enter the number of pictures to fetch:");
+                if (numPictures != null && numPictures != "") {
+                    $('#actionButton').prop('disabled', true); // Disable button during data loading
+                    $.ajax({
+                        url: '/clear_and_load_data',
+                        type: 'POST',
+                        data: { numPictures: numPictures },
+                        success: function(response){
+                            // Display a message indicating that the data loading process is complete
+                            alert(response.message);
+                            $('#actionButton').prop('disabled', false); // Re-enable button after data loading
+                        },
+                        error: function(response){
+                            alert(response.responseJSON.error);
+                            $('#actionButton').prop('disabled', false); // Re-enable button after data loading failure
+                        }
+                    });
+                }
+            });
 
-    });
-</script>
+    
+
+    
+        });
+    </script>
+    
+    
+        
+        
 
 </body>
 </html>
